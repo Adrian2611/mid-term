@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Lab 3</title>
+		<link rel="icon" href="favicon.png" >
+		<!-- Leaflet Css-->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin=""/>
+		<!-- Ensure cross platform compatibility -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+		<!-- Style -->
+		<!-- Better Scale Css-->
+		<link rel="stylesheet" href="plugins/better-scale/L.Control.BetterScale.css" />
+		<!--North Arrow -->
+		<link rel="stylesheet" href="plugins/north-arrow/L.Control.Rose.css" />
+		<style>
+			body {
+				padding: 0;
+				margin: 0;
+			}
+			html, body, #mymap {
+				height: 100%;
+				width: 100vw;
+			}
+			.row{
+				width: 200px;
+				margin-left: -15px;
+				margin-right: -15px;
+				margin-bottom: -10px;
+			}
+			
+			.column-1{
+				margin: 3px;
+				padding: 1px;
+			}
+			.column-2{
+				z-index:0;
+				width: 100%;
+			}
+			.row:after {
+			  content: "";
+			  clear: both;
+			}
+			.description{
+				font-size: 90%;
+			}
+			.legend {
+				padding: 6px 8px;
+				line-height: 18px;
+				background: rgba(255,255,255,0.9);
+				box-shadow: 0 0 15px rgba(0,0,0,0.2);
+				border-radius: 5px;
+			}
+
+			/* Optional: adjust the values below to change the appearance of the legend color boxes */
+			.legend i {
+				width: 15px;
+				height: 15px;
+				float: left;
+				margin-right: 8px;
+				opacity: 0.7;
+			}
+			.titleDiv {
+				padding: 1px;
+				background: rgba(255,255,255,0.9);
+				border-radius: 2px;
+				margin-bottom:-50 px;
+			}
+			
+		</style>
+    </head>
+
+    <body>
+		<!--Map-->
+		<div id="mymap"></div>
+		<!--Noth Arrow -->
+		<div id="rose"></div>
+		<!-- Java Scripts-->
+		<!-- Leaflet js-->
+		<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+        integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+        crossorigin=""></script>
+		<!-- Better Scale Js-->
+		<script src="plugins/better-scale/L.Control.BetterScale.js"></script>
+		<!--North Arrow -->
+		<script src="plugins/north-arrow/L.Control.Rose.js"></script>
+		<!-- States Aging Data -->
+		<script type="text/javascript" src="data/states.js"></script>
+		<!-- counties Aging Data -->
+		<script type="text/javascript" src="data/counties.js"></script>
+		<!--Map Data -->
+		<script type="text/javascript">
+			
+			var titleDiv = L.control({position: 'topright'});
+			titleDiv.onAdd = function (map){
+				var titleText = L.DomUtil.create('div', 'titleDiv');
+				titleText.innerHTML = '<h4>Comparison Between States and Counties Aging Population</h4>';
+				return titleText;
+			};
+			
+			
+			function highlightFeature(e) {
+				// Get access to the feature that was hovered through e.target
+				var feature = e.target;
+
+				// Set a thick grey border on the feature as mouseover effect
+				// Adjust the values below to change the highlighting styles of features on mouseover
+				// Check out https://leafletjs.com/reference-1.3.4.html#path for more options for changing style
+				feature.setStyle({
+					weight: 5,
+					color: '#fff',
+					fillOpacity: 1
+				});
+
+				// Bring the highlighted feature to front so that the border doesn’t clash with nearby states
+				// But not for IE, Opera or Edge, since they have problems doing bringToFront on mouseover
+				if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+					feature.bringToFront();
+				}
+			}
+			
+			var geojson, county_geojson; 
+			
+			function resetHighlight(e) {
+				geojson.resetStyle(e.target);
+				county_geojson.resetStyle(e.target);
+			}	
+			
+			function onEachFeature(feature, layer) {
+				layer.on({
+					mouseover: highlightFeature, // Do what defined by the highlightFeature function on mouseover
+					mouseout: resetHighlight,    // Do what defined by the resetHighlight function on mouseout
+				});
+			}
+
+			function getColor(per_aging) {
+				return per_aging > 14.9 ? '#006d2c':
+					   per_aging > 13.8 ? '#31a354':
+					   per_aging > 12.5  ? '#74c476':
+					   per_aging > 10.9  ? '#bae4b3':
+					   per_aging > 9  ? '#edf8e9':
+									 '#fef0d9';
+			}
+			
+			function style(feature){
+				return {
+					fillColor: getColor(feature.properties.per_aging),   // pop_den is the field name for the population density data
+					weight: 2,
+					//dashArray: '5, 10',
+					opacity: 0.6,
+					color: 'gray',
+					fillOpacity: 0.7
+				};
+			}
+			
+			geojson = L.geoJson(states_aging, {
+				style:style,
+				onEachFeature: onEachFeature
+			}).bindPopup(function (layer){
+				return layer.feature.properties.NAME10 
+					   + '<p style="color:red">' + layer.feature.properties.per_aging.toString() + ' % Aging population</p>';       
+			})
+			
+			county_geojson = L.geoJson(counties_aging, {
+				style:style,
+				onEachFeature: onEachFeature
+			}).bindPopup(function (layer){
+				return layer.feature.properties.NAME10 
+					   + '<p style="color:red">' + layer.feature.properties.per_aging.toString() + ' % Aging population</p>';       
+			})
+			
+			//cartodb layer
+			var cartodb = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+			   attribution: 'Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+			   maxZoom: 11,
+			   minZoom: 2
+			 });
+			 
+			//map
+			var map = L.map('mymap', {
+				center: [39.9093579,-97.661589],
+				zoom: 4,
+				layers: [cartodb, geojson] //add to map
+			});
+			
+			var baseMaps = {
+				"Carto DB": cartodb,
+			};
+			var overlayMaps = {
+				"State % Aging" : geojson,
+				"County % Aging" : county_geojson,
+			};
+			
+			var legend = L.control({position: 'bottomright'});
+			legend.onAdd = function (map) {
+
+				var div = L.DomUtil.create('div', 'legend'),
+					grades = [9, 10.9, 12.5, 13.8, 14.9]; // The break values to define the intervals of population, note we begin from 0 here
+
+				div.innerHTML = '<h5><b>Percentage of Aging Population</b></h5>'; // The legend title (HTML-based), in this case it's Population Density 2011
+
+				// Loop through our the classes and generate a label with a color box for each interval.
+				// If you are creating a choropleth map, you DO NOT need to change lines below.
+				for (var i = 0; i < grades.length; i++) {
+					div.innerHTML +=
+					'<i style="background:' + getColor(grades[i] + 1) + '"></i>' +
+					grades[i] + (grades[i + 1] ? ' % &ndash; ' + grades[i + 1] + ' %</br>' : '+');
+				}
+
+				return div;
+			};
+			legend.addTo(map);
+			titleDiv.addTo(map);
+			//Layer Control -- Legend
+			L.control.layers(baseMaps, overlayMaps).addTo(map);
+			//Better Scale Plugin
+			L.control.betterscale().addTo(map);
+			//rose north arrow
+			var rose = L.control.rose('rose', {position:'bottomleft', icon:'inner', iSize:'xsmall', opacity:0.8});
+			rose.addTo(map);
+			//Title
+			
+		</script>
+    </body>
+</html>
