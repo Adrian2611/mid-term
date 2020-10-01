@@ -1,2 +1,2 @@
-# lab-3
-Interactive Choropleth Map
+# Mid Term
+Aging population choropleth web map
